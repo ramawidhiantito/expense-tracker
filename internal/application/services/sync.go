@@ -94,12 +94,20 @@ func (s *SyncService) Run(ctx context.Context, query string, unreadOnly bool) (i
 			continue
 		}
 
-		// 4. Export to Sheets
+		// 4. Export to Sheets and DB
 		err = s.sheetProvider.AppendExpense(ctx, s.sheetID, s.sheetRange, *expense)
 		if err != nil {
 			log.Printf("Failed to export expense to sheets (msg %s): %v\n", email.ID, err)
 			// Do not save state as FAILED here, we want it to retry on the next run
 			continue
+		}
+
+		err = s.stateManager.SaveExpense(ctx, email.ID, *expense)
+		if err != nil {
+			log.Printf("Failed to save expense to database (msg %s): %v\n", email.ID, err)
+			// Decide if this should be fatal for the message.
+			// Since it's already in Sheets, we might want to continue or retry.
+			// For now, let's just log and continue, or we can consider it a partial failure.
 		}
 
 		// 5. Mark as processed in DB and Gmail
