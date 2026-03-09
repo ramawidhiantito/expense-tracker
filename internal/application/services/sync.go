@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
 	"expense-tracking/internal/core/domain"
 	"expense-tracking/internal/core/ports"
@@ -59,15 +58,6 @@ func (s *SyncService) Run(ctx context.Context, query string, unreadOnly bool) (i
 	processedCount := 0
 
 	for _, email := range emails {
-		// get body and write
-		data := email.Body
-		file, err := os.Create("body.html")
-		if err != nil {
-			return 0, err
-		}
-		defer file.Close()
-		file.WriteString(data)
-
 		// 1. Check idempotency
 		exists, err := s.stateManager.ExistsMessageID(ctx, email.ID)
 		if err != nil {
