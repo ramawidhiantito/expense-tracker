@@ -1,0 +1,7 @@
+DATABASE_URL=postgres://postgres:postgres123@localhost:5432/expense-tracker
+GMAIL_CREDENTIALS_JSON=credential_oauth.json
+GMAIL_TOKEN_JSON=token.json
+SHEETS_CREDENTIALS_JSON=service-account.json
+TARGET_SHEET_ID=1Yo325PhZJkXQ5kvGICiauRIm2-fcYSkZc8reoerdSPw
+TARGET_SHEET_RANGE=Sheet1!A:E
+TARGET_BANK_SENDER=bca@bca.co.id,receipts@blubybcadigital.id
