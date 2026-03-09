@@ -72,7 +72,7 @@ go run ./cmd/tracker/main.go
 ### Run in Backfill Mode
 Processes emails within a specific date range.
 ```bash
-go run ./cmd/tracker/main.go -backfill -after "2023/10/01" -before "2023/10/31"
+go run ./cmd/tracker/main.go -backfill -after "2026/03/01" -before "2026/03/09"
 ```
 
 ## Testing
