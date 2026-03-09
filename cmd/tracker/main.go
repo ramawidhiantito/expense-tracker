@@ -8,11 +8,14 @@ import (
 	"expense-tracking/internal/infrastructure/gmail"
 	"expense-tracking/internal/infrastructure/parser"
 	"expense-tracking/internal/infrastructure/sheets"
+	"expense-tracking/internal/infrastructure/web"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -66,6 +69,17 @@ func main() {
 	parsers = append(parsers, parser.NewBluParser())
 	// 5. Initialize Sync Service
 	syncService := services.NewSyncService(emailProvider, sheetProvider, stateManager, parsers, targetSheetID, targetSheetRange)
+
+	// 5b. Initialize Web Server
+	webPort := os.Getenv("WEB_PORT")
+	if webPort == "" {
+		webPort = ":8080"
+	}
+	webServer := web.NewServer(stateManager, webPort)
+	syncService.OnNewExpense = webServer.BroadcastNewExpense
+	
+	go webServer.Start()
+
 	// Build base email query to support multiple comma-separated senders
 	senders := strings.Split(targetSender, ",")
 	var senderQueries []string
@@ -83,17 +97,27 @@ func main() {
 			query += fmt.Sprintf(" before:%s", strings.ReplaceAll(*before, "-", "/"))
 		}
 		runSync(ctx, syncService, query, false)
-		return
+		log.Println("Backfill complete. Web server is still running. Press Ctrl+C to exit.")
+	} else {
+		// 6. Run Application in Cron Mode
+		log.Println("Starting expense tracking worker in CRON mode...")
+		ticker := time.NewTicker(15 * time.Minute)
+		defer ticker.Stop()
+
+		// Run once immediately in a goroutine so it doesn't block the main thread's signal listener
+		go func() {
+			runSync(ctx, syncService, baseQuery, true)
+			for range ticker.C {
+				runSync(ctx, syncService, baseQuery, true)
+			}
+		}()
 	}
-	// 6. Run Application in Cron Mode
-	log.Println("Starting expense tracking worker in CRON mode...")
-	ticker := time.NewTicker(15 * time.Minute)
-	defer ticker.Stop()
-	// Run once immediately
-	runSync(ctx, syncService, baseQuery, true)
-	for range ticker.C {
-		runSync(ctx, syncService, baseQuery, true)
-	}
+
+	// Wait for interrupt signal to gracefully shut down the server
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	<-stop
+	log.Println("Shutting down...")
 }
 func runSync(ctx context.Context, srv *services.SyncService, query string, unreadOnly bool) {
 	log.Println("=== Starting Sync Cycle ===")

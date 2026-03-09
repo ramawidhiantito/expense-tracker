@@ -19,6 +19,9 @@ type StateManager interface {
 	// SaveExpense stores the extracted expense details in the database
 	SaveExpense(ctx context.Context, messageID string, expense domain.Expense) error
 
+	// ListExpenses returns the most recent expenses
+	ListExpenses(ctx context.Context, limit int) ([]domain.Expense, error)
+
 	// Close closes the underlying connection
 	Close()
 }

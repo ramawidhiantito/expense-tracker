@@ -109,6 +109,41 @@ func (m *postgresStateManager) SaveExpense(ctx context.Context, messageID string
 	return nil
 }
 
+func (m *postgresStateManager) ListExpenses(ctx context.Context, limit int) ([]domain.Expense, error) {
+	query := `
+		SELECT date, merchant, amount, currency, category, bank
+		FROM expenses
+		ORDER BY created_at DESC
+		LIMIT $1
+	`
+	rows, err := m.pool.Query(ctx, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query expenses: %w", err)
+	}
+	defer rows.Close()
+
+	var expenses []domain.Expense
+	for rows.Next() {
+		var e domain.Expense
+		err := rows.Scan(
+			&e.Date,
+			&e.Merchant,
+			&e.Amount,
+			&e.Currency,
+			&e.Category,
+			&e.Bank,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan expense: %w", err)
+		}
+		expenses = append(expenses, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+	return expenses, nil
+}
+
 func (m *postgresStateManager) Close() {
 	if m.pool != nil {
 		m.pool.Close()

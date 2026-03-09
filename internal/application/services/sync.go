@@ -16,6 +16,7 @@ type SyncService struct {
 	parsers       []ports.Parser
 	sheetID       string
 	sheetRange    string
+	OnNewExpense  func(domain.Expense) // Callback for live updates
 }
 
 // NewSyncService creates the main orchestrator for tracking expenses
@@ -108,6 +109,10 @@ func (s *SyncService) Run(ctx context.Context, query string, unreadOnly bool) (i
 			// Decide if this should be fatal for the message.
 			// Since it's already in Sheets, we might want to continue or retry.
 			// For now, let's just log and continue, or we can consider it a partial failure.
+		} else {
+			if s.OnNewExpense != nil {
+				s.OnNewExpense(*expense)
+			}
 		}
 
 		// 5. Mark as processed in DB and Gmail

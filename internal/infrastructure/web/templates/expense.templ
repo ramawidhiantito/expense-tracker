@@ -1,0 +1,332 @@
+package templates
+
+import "expense-tracking/internal/core/domain"
+import "fmt"
+import "strings"
+
+templ Index(expenses []domain.Expense) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<title>Expense Horizon</title>
+			<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+			<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+			<script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
+			<style>
+				:root {
+					--primary: #6366f1;
+					--primary-hover: #4f46e5;
+					--bg-color: #0f172a;
+					--surface: #1e293b;
+					--surface-hover: #334155;
+					--border: #334155;
+					--text: #f8fafc;
+					--text-muted: #94a3b8;
+					--glass-bg: rgba(30, 41, 59, 0.7);
+					--glass-border: rgba(255, 255, 255, 0.1);
+				}
+
+				body { 
+					font-family: 'Outfit', sans-serif; 
+					padding: 0; 
+					margin: 0;
+					background: var(--bg-color); 
+					background-image: 
+						radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+						radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
+						radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
+					background-attachment: fixed;
+					color: var(--text); 
+					min-height: 100vh;
+				}
+
+				.container {
+					max-width: 1200px;
+					margin: 0 auto;
+					padding: 40px 20px;
+				}
+
+				.header {
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+					margin-bottom: 30px;
+				}
+
+				h1 { 
+					color: var(--text); 
+					font-weight: 600;
+					font-size: 2.5rem;
+					margin: 0;
+					background: linear-gradient(to right, #818cf8, #c084fc);
+					-webkit-background-clip: text;
+					-webkit-text-fill-color: transparent;
+				}
+
+				.status-indicator {
+					display: flex;
+					align-items: center;
+					gap: 8px;
+					font-size: 0.9rem;
+					color: var(--text-muted);
+					background: var(--glass-bg);
+					padding: 8px 16px;
+					border-radius: 999px;
+					border: 1px solid var(--glass-border);
+					backdrop-filter: blur(10px);
+				}
+
+				.pulse {
+					width: 8px;
+					height: 8px;
+					background-color: #10b981;
+					border-radius: 50%;
+					box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+					animation: pulse 2s infinite;
+				}
+
+				@keyframes pulse {
+					0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+					70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+					100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+				}
+
+				.filters {
+					display: flex;
+					gap: 16px;
+					margin-bottom: 24px;
+					background: var(--glass-bg);
+					padding: 20px;
+					border-radius: 16px;
+					border: 1px solid var(--glass-border);
+					backdrop-filter: blur(10px);
+					box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+				}
+
+				.filter-group {
+					display: flex;
+					flex-direction: column;
+					gap: 6px;
+					flex: 1;
+				}
+
+				.filter-group label {
+					font-size: 0.85rem;
+					color: var(--text-muted);
+					font-weight: 500;
+					text-transform: uppercase;
+					letter-spacing: 0.05em;
+				}
+
+				.input-control {
+					background: var(--surface);
+					border: 1px solid var(--border);
+					color: var(--text);
+					padding: 12px 16px;
+					border-radius: 8px;
+					font-family: inherit;
+					font-size: 1rem;
+					transition: all 0.2s ease;
+					outline: none;
+				}
+
+				.input-control:focus {
+					border-color: var(--primary);
+					box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+				}
+
+				.table-container {
+					background: var(--glass-bg);
+					border-radius: 16px;
+					border: 1px solid var(--glass-border);
+					backdrop-filter: blur(10px);
+					overflow: hidden;
+					box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+				}
+
+				table { 
+					width: 100%; 
+					border-collapse: collapse; 
+					text-align: left;
+				}
+				
+				th, td { 
+					padding: 16px 20px; 
+					border-bottom: 1px solid var(--border);
+				}
+				
+				th { 
+					background-color: rgba(30, 41, 59, 0.8);
+					font-weight: 600; 
+					color: var(--text-muted); 
+					text-transform: uppercase;
+					font-size: 0.85rem;
+					letter-spacing: 0.05em;
+				}
+
+				tbody tr {
+					transition: all 0.2s ease;
+				}
+				
+				tbody tr:hover { 
+					background-color: var(--surface-hover); 
+				}
+
+				tbody tr:last-child td {
+					border-bottom: none;
+				}
+
+				.amount {
+					font-family: 'SF Mono', 'Roboto Mono', monospace;
+					font-weight: 600;
+					color: #f1f5f9;
+				}
+
+				.badge {
+					display: inline-block;
+					padding: 4px 10px;
+					border-radius: 999px;
+					font-size: 0.75rem;
+					font-weight: 600;
+					letter-spacing: 0.05em;
+				}
+
+				.badge-blue { background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.2); }
+				.badge-purple { background: rgba(167, 139, 250, 0.1); color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.2); }
+				.badge-emerald { background: rgba(52, 211, 153, 0.1); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.2); }
+				.badge-default { background: rgba(148, 163, 184, 0.1); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.2); }
+
+				@keyframes highlight {
+					0% { background-color: rgba(99, 102, 241, 0.3); }
+					100% { background-color: transparent; }
+				}
+				
+				.new-row {
+					animation: highlight 3s ease-out forwards;
+				}
+			</style>
+		</head>
+		<body>
+			<div class="container">
+				<div class="header">
+					<h1>Expense Horizon</h1>
+					<div class="status-indicator">
+						<div class="pulse"></div>
+						Live Sync Active
+					</div>
+				</div>
+
+				<div class="filters">
+					<div class="filter-group">
+						<label for="searchInput">Search Data</label>
+						<input type="text" id="searchInput" class="input-control" placeholder="Search merchants, amounts..." oninput="filterTable()"/>
+					</div>
+					<div class="filter-group">
+						<label for="bankFilter">Filter by Bank</label>
+						<select id="bankFilter" class="input-control" onchange="filterTable()">
+							<option value="">All Banks</option>
+							<option value="bca">BCA</option>
+							<option value="blu">BLU</option>
+						</select>
+					</div>
+				</div>
+
+				<div class="table-container" hx-ext="sse" sse-connect="/events">
+					<table>
+						<thead>
+							<tr>
+								<th>Date</th>
+								<th>Bank</th>
+								<th>Merchant</th>
+								<th>Category</th>
+								<th>Amount</th>
+							</tr>
+						</thead>
+						<tbody id="expense-table-body" sse-swap="expense" hx-swap="afterbegin">
+							for _, e := range expenses {
+								@ExpenseRow(e)
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<script>
+				function filterTable() {
+					const search = document.getElementById('searchInput').value.toLowerCase();
+					const bankFilter = document.getElementById('bankFilter').value.toLowerCase();
+					
+					const rows = document.querySelectorAll('#expense-table-body tr');
+					rows.forEach(row => {
+						if (!row.children || row.children.length === 0) return;
+						const text = row.innerText.toLowerCase();
+						const bank = row.children[1].innerText.toLowerCase().trim();
+						
+						const matchesSearch = text.includes(search);
+						const matchesBank = bankFilter === "" || bank.includes(bankFilter);
+						
+						if (matchesSearch && matchesBank) {
+							row.style.display = '';
+						} else {
+							row.style.display = 'none';
+						}
+					});
+				}
+
+				const observer = new MutationObserver(function(mutations) {
+					mutations.forEach(function(mutation) {
+						if (mutation.addedNodes.length > 0) {
+							mutation.addedNodes.forEach(node => {
+								if (node.nodeType === 1 && node.tagName === 'TR') {
+									node.classList.add('new-row');
+									filterTable();
+								}
+							});
+						}
+					});
+				});
+
+				document.addEventListener("DOMContentLoaded", function() {
+					const tbody = document.getElementById('expense-table-body');
+					if (tbody) {
+						observer.observe(tbody, { childList: true });
+					}
+				});
+			</script>
+		</body>
+	</html>
+}
+
+func getBankBadgeClass(bank string) string {
+	b := strings.ToLower(bank)
+	if strings.Contains(b, "bca") {
+		return "badge-blue"
+	} else if strings.Contains(b, "blu") {
+		return "badge-purple"
+	}
+	return "badge-default"
+}
+
+templ ExpenseRow(e domain.Expense) {
+	<tr>
+		<td>
+			<div style="color: var(--text); font-weight: 500;">{ e.Date.Format("02 Jan 2006") }</div>
+			<div style="color: var(--text-muted); font-size: 0.85rem;">{ e.Date.Format("15:04") }</div>
+		</td>
+		<td>
+			<span class={ "badge " + getBankBadgeClass(e.Bank) }>{ e.Bank }</span>
+		</td>
+		<td style="font-weight: 500;">{ e.Merchant }</td>
+		<td>
+			if e.Category != "" {
+				<span class="badge badge-emerald">{ e.Category }</span>
+			} else {
+				<span style="color: var(--text-muted); font-style: italic;">Uncategorized</span>
+			}
+		</td>
+		<td class="amount">
+			{ fmt.Sprintf("%.2f", e.Amount) } { e.Currency }
+		</td>
+	</tr>
+}
